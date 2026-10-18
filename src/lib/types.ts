@@ -91,6 +91,7 @@ export type ChatController = {
   acknowledgeSend: (draft: SendDraft, id: string) => Promise<void>;
   reconcileSendDrafts: (drafts: SendDraft[], hasPartialRestoredDraft?: boolean) => Promise<void>;
   signIn: () => void;
+  signingIn: boolean;
   signOut: () => Promise<void>;
   startDemo: () => void;
   clearError: () => void;

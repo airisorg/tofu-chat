@@ -32,6 +32,9 @@ const DEMO_CHOICE_KEY = 'relay-chat-demo-choice-v1';
 const BOOTSTRAP_ERROR = 'Unable to connect. Check your connection and refresh the page.';
 const DEMO_ALLOWED =
   process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
+// The sign-in broker answers in about a second (longer when cold). A visit still here after this
+// long had its navigation stopped or blocked, so Continue with Google is offered again.
+const SIGN_IN_PENDING_MS = 15_000;
 
 export class PendingSendIds {
   private readonly ids = new Map<string, { id: string; confirmed: boolean; durable: boolean }>();
@@ -253,6 +256,7 @@ export function useChat(): ChatController {
   const [demo, setDemo] = useState(false);
   const [authAvailable, setAuthAvailable] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
   const stateRef = useRef<ChatState | null>(null);
   const configRef = useRef<Config | null>(null);
   const clientRef = useRef<SupabaseClient | null>(null);
@@ -994,6 +998,20 @@ export function useChat(): ChatController {
     [],
   );
 
+  useEffect(() => {
+    if (!signingIn) return;
+    // This page stays alive while the broker answers. If the visit comes back instead (restored
+    // from the back/forward cache, or the navigation was stopped), sign-in must not stay pending.
+    // Only a restore fires pageshow now: the listener is added after the page has loaded.
+    const restore = () => setSigningIn(false);
+    const timer = window.setTimeout(restore, SIGN_IN_PENDING_MS);
+    window.addEventListener('pageshow', restore);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('pageshow', restore);
+    };
+  }, [signingIn]);
+
   const signIn = useCallback(() => {
     if (!authAvailable || !configRef.current) {
       setError('Google sign-in is unavailable. Please try again when you’re connected.');
@@ -1009,8 +1027,10 @@ export function useChat(): ChatController {
       const callback = beginLogin(`${window.location.origin}/`, sessionStorage);
       const url = new URL('https://oauth.trytofu.ai/start');
       url.searchParams.set('return', callback);
+      setSigningIn(true);
       window.location.assign(url.href);
     } catch {
+      setSigningIn(false);
       setError(
         'This browser could not save the sign-in request. Allow site storage, then try Continue with Google again.',
       );
@@ -1054,6 +1074,7 @@ export function useChat(): ChatController {
     acknowledgeSend,
     reconcileSendDrafts,
     signIn,
+    signingIn,
     signOut,
     startDemo,
     loadAttachment,
