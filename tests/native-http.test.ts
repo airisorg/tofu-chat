@@ -83,6 +83,7 @@ test(
       // Installed NextURL normalizes loopback hostnames to localhost. Use that
       // canonical origin for both the actual wire Host and browser Origin header.
       const authUrl = `https://127.0.0.1:${address.port}`,
+        authBrokerUrl = 'https://broker.native-test.invalid',
         port = await freePort(),
         origin = `http://localhost:${port}`;
       const buildId = (await readFile('.next/BUILD_ID', 'utf8')).trim();
@@ -115,6 +116,8 @@ test(
         SUPABASE_ANON_KEY: 'sb_publishable_native_fixture',
         NEXT_PUBLIC_SUPABASE_URL: authUrl,
         NEXT_PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_native_fixture',
+        // Set after the build to prove the compiled endpoint reads runtime configuration.
+        TOFU_AUTH_BROKER_URL: authBrokerUrl,
         NEXT_TELEMETRY_DISABLED: '1',
       });
       await until(
@@ -170,10 +173,14 @@ test(
         async () => {
           const configResponse = await fetch(origin + '/api/config'),
             config = await configResponse.json();
+          assert.equal(configResponse.status, 200);
+          assert.match(configResponse.headers.get('cache-control') ?? '', /no-store/);
           assert.equal(config.databaseConfigured, true);
           assert.equal(config.supabaseUrl, authUrl);
           assert.equal(config.supabaseAnonKey, 'sb_publishable_native_fixture');
+          assert.equal(config.authBrokerUrl, authBrokerUrl);
           assert.deepEqual(Object.keys(config).sort(), [
+            'authBrokerUrl',
             'databaseConfigured',
             'supabaseAnonKey',
             'supabaseUrl',
