@@ -2,6 +2,7 @@ import { createClient, type User } from '@supabase/supabase-js';
 import postgres from 'postgres';
 import { createHash } from 'node:crypto';
 import { databaseTls } from './database-tls';
+import { authBrokerOrigin } from './auth-broker';
 import type { Attachment, ChatAction, ChatState, Message, Person } from './types';
 import { ACTION_RETRY_WINDOW_MS, MAX_RECENT_ACTIONS, canonicalJson } from './action-identity';
 import { MAX_CONVERSATION_MEMBERS } from './chat-limits';
@@ -73,6 +74,7 @@ export function publicConfig() {
     supabaseUrl = '';
   }
   return {
+    authBrokerUrl: authBrokerOrigin(process.env.TOFU_AUTH_BROKER_URL),
     supabaseUrl,
     supabaseAnonKey: supabaseUrl ? supabaseAnonKey : '',
     databaseConfigured: Boolean(process.env.DATABASE_URL),

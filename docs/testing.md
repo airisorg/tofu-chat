@@ -129,7 +129,9 @@ CodeQL uses the repository's existing default setup. Do not add an advanced Code
 Native integration runs as the ordinary Ubuntu runner user. It creates only its
 own temporary clusters on loopback ports, verifies the build's source hashes
 before starting, and stops/removes those clusters afterward. It does not use a
-shared service database or any production secret. Only sanitized JSON proof,
+shared service database or any production secret. The compiled HTTP check also
+supplies a synthetic broker origin after the build and verifies that `/api/config`
+returns it with `no-store`; it does not contact that broker. Only sanitized JSON proof,
 the test log and source/build binding are uploaded; private fixture keys and
 database directories are excluded. Uploaded coverage and proof artifacts expire
 after seven days; workflow logs follow the repository's retention setting.

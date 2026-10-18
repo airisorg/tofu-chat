@@ -16,6 +16,7 @@ import { withRequestDeadline } from './request-deadline';
 import { uploadAttachments } from './media-upload';
 import { authenticatedFetch, refreshFailure } from './authenticated-fetch';
 import { PendingActionIds } from './action-identity';
+import { authBrokerOrigin } from './auth-broker';
 import {
   beginLogin,
   cleanLoginCallback,
@@ -25,7 +26,12 @@ import {
 import { errorMessage, normalizeNetworkError } from './network-error';
 export { withRequestDeadline } from './request-deadline';
 
-type Config = { supabaseUrl: string; supabaseAnonKey: string; databaseConfigured: boolean };
+type Config = {
+  authBrokerUrl?: string;
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  databaseConfigured: boolean;
+};
 type Mode = 'guest' | 'auth' | 'demo';
 const AUTH_STORAGE_KEY = 'relay-chat-auth-v1';
 const DEMO_CHOICE_KEY = 'relay-chat-demo-choice-v1';
@@ -605,11 +611,14 @@ export function useChat(): ChatController {
         controllers.current.delete(controller);
         if (
           !config ||
+          (config.authBrokerUrl !== undefined && typeof config.authBrokerUrl !== 'string') ||
           typeof config.supabaseUrl !== 'string' ||
           typeof config.supabaseAnonKey !== 'string' ||
           typeof config.databaseConfigured !== 'boolean'
         )
           throw new Error('Unable to load sign-in settings.');
+        // Older config responses omit the broker; an explicit invalid value never falls back.
+        config.authBrokerUrl = authBrokerOrigin(config.authBrokerUrl);
         let valid = false;
         try {
           const url = new URL(config.supabaseUrl);
@@ -617,6 +626,7 @@ export function useChat(): ChatController {
             url.protocol === 'https:' &&
             !url.username &&
             !url.password &&
+            Boolean(config.authBrokerUrl) &&
             Boolean(config.supabaseAnonKey) &&
             config.databaseConfigured === true;
         } catch {
@@ -1007,7 +1017,7 @@ export function useChat(): ChatController {
     }
     try {
       const callback = beginLogin(`${window.location.origin}/`, sessionStorage);
-      const url = new URL('https://oauth.trytofu.ai/start');
+      const url = new URL('/start', configRef.current.authBrokerUrl);
       url.searchParams.set('return', callback);
       window.location.assign(url.href);
     } catch {

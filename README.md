@@ -58,7 +58,7 @@ npm run dev
 
 Open <http://localhost:3000> and choose **Explore demo** to try synthetic conversations without an account. The demo is enabled by default in development; its data stays in that browser. Production disables it unless explicitly enabled for testing.
 
-A connected workspace needs PostgreSQL and Supabase identity settings. Tofu supplies these for the hosted app; [.env.example](.env.example) lists the settings for your own deployment. Self-hosted Google sign-in also needs an authorized Tofu OAuth broker setup; environment values alone do not configure it. Keep populated environment files and credentials out of Git. See [runtime and data handling](docs/runtime.md) for authorization, limits and retry behavior.
+A connected workspace needs PostgreSQL and Supabase identity settings. Tofu supplies these for the hosted app; [.env.example](.env.example) lists the settings for your own deployment. Google sign-in defaults to Tofu's production broker. For a TEST app, set the public server setting `TOFU_AUTH_BROKER_URL=https://oauth-autopush.trytofu.ai` through the app's environment settings; Tofu does not inject it automatically. Self-hosted Google sign-in also needs an authorized Tofu OAuth broker setup; environment values alone do not configure it. Keep populated environment files and credentials out of Git. See [runtime and data handling](docs/runtime.md) for authorization, limits and retry behavior.
 
 ## Development
 
