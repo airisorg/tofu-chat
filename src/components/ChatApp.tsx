@@ -1878,9 +1878,14 @@ export default function ChatApp() {
               Bring your people together in one calm, organized place. A chat experience built for
               your team, and the way you move.
             </p>
-            <button className="google-button" onClick={chat.signIn} disabled={!chat.authAvailable}>
+            <button
+              className="google-button"
+              onClick={chat.signIn}
+              disabled={!chat.authAvailable || chat.signingIn}
+              aria-busy={chat.signingIn || undefined}
+            >
               <img src="/auth/google-g.svg" width={20} height={20} alt="" aria-hidden="true" />
-              <span>Continue with Google</span>
+              <span>{chat.signingIn ? 'Opening Google…' : 'Continue with Google'}</span>
             </button>
             {!chat.authAvailable && (
               <p className="auth-note">

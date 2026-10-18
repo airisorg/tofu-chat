@@ -2202,6 +2202,9 @@ button:hover {
   opacity: 0.6;
   cursor: not-allowed;
 }
+.google-button[aria-busy='true']:disabled {
+  cursor: wait;
+}
 .welcome-copy > .auth-note {
   font-size: 11px;
   line-height: 1.7;

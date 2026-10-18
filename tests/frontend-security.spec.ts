@@ -325,6 +325,69 @@ test('Continue with Google creates the callback challenge before the broker navi
   await heading(page);
   expect(await page.evaluate((key) => sessionStorage.getItem(key), LOGIN_REQUEST_KEY)).toBeNull();
 });
+// An aborted navigation leaves this page on screen, as it is while the broker is still answering.
+// (Playwright does not read a page that has a held navigation pending.)
+async function stoppedBroker(context: BrowserContext) {
+  const starts: string[] = [];
+  await context.route('https://oauth.trytofu.ai/start?**', (route) => {
+    starts.push(route.request().url());
+    return route.abort('aborted');
+  });
+  return starts;
+}
+test('Continue with Google shows a pending state and starts the broker once', async ({
+  page,
+  context,
+}) => {
+  await fixture(context);
+  const starts = await stoppedBroker(context);
+  await page.goto(base);
+  await page.getByRole('button', { name: 'Continue with Google', exact: true }).click();
+  const pending = page.getByRole('button', { name: 'Opening Google…', exact: true });
+  await expect(pending).toBeDisabled();
+  await expect(pending).toHaveAttribute('aria-busy', 'true');
+  const stored = () => page.evaluate((key) => sessionStorage.getItem(key), LOGIN_REQUEST_KEY);
+  const request = await stored();
+  expect(request).not.toBeNull();
+  // A second press while the broker is answering must not restart the sign-in.
+  await pending.click({ force: true });
+  expect(await stored()).toBe(request);
+  await expect.poll(() => starts.length).toBe(1);
+});
+test('a page restored from the back/forward cache offers Continue with Google again', async ({
+  page,
+  context,
+}) => {
+  await fixture(context);
+  await stoppedBroker(context);
+  await page.goto(base);
+  await page.getByRole('button', { name: 'Continue with Google', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Opening Google…', exact: true })).toBeDisabled();
+  await page.evaluate(() =>
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })),
+  );
+  const again = page.getByRole('button', { name: 'Continue with Google', exact: true });
+  await expect(again).toBeEnabled();
+  await expect(again).not.toHaveAttribute('aria-busy');
+});
+test('a stopped broker navigation lets the visitor try Continue with Google again', async ({
+  page,
+  context,
+}) => {
+  await fixture(context);
+  await stoppedBroker(context);
+  await page.clock.install();
+  await page.goto(base);
+  await page.getByRole('button', { name: 'Continue with Google', exact: true }).click();
+  const pending = page.getByRole('button', { name: 'Opening Google…', exact: true });
+  await expect(pending).toBeDisabled();
+  await page.clock.fastForward(14_000);
+  await expect(pending).toBeDisabled();
+  await page.clock.fastForward(1_100);
+  await expect(
+    page.getByRole('button', { name: 'Continue with Google', exact: true }),
+  ).toBeEnabled();
+});
 test('an account change during a held read never attaches the earlier account’s selected file', async ({
   page,
   context,
