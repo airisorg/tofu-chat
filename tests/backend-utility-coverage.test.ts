@@ -38,18 +38,21 @@ test('config handler preserves public fallback settings and hides malformed depl
     NEXT_PUBLIC_SUPABASE_URL: 'https://identity.fixture.invalid/project/',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_fixture',
     DATABASE_URL: undefined,
+    TOFU_AUTH_BROKER_URL: undefined,
   });
   const response = configGet();
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.match(response.headers.get('content-type')!, /^application\/json/);
   assert.deepEqual(publicConfig(), {
+    authBrokerUrl: 'https://oauth.trytofu.ai',
     supabaseUrl: 'https://identity.fixture.invalid/project',
     supabaseAnonKey: 'sb_publishable_fixture',
     databaseConfigured: false,
   });
   process.env.SUPABASE_URL = 'this is not a URL';
   assert.deepEqual(publicConfig(), {
+    authBrokerUrl: 'https://oauth.trytofu.ai',
     supabaseUrl: '',
     supabaseAnonKey: '',
     databaseConfigured: false,
@@ -57,6 +60,26 @@ test('config handler preserves public fallback settings and hides malformed depl
   process.env.SUPABASE_URL = 'https://identity.fixture.invalid';
   process.env.SUPABASE_ANON_KEY = 'malformed-public-key';
   assert.equal(publicConfig().supabaseAnonKey, '');
+});
+
+test('config reads the broker origin at runtime and never publishes an invalid setting', async (t) => {
+  environment(t, { TOFU_AUTH_BROKER_URL: undefined });
+  assert.equal((await configGet().json()).authBrokerUrl, 'https://oauth.trytofu.ai');
+  process.env.TOFU_AUTH_BROKER_URL = 'https://oauth-autopush.trytofu.ai/';
+  assert.equal((await configGet().json()).authBrokerUrl, 'https://oauth-autopush.trytofu.ai');
+  for (const value of [
+    '',
+    'not a URL',
+    'http://oauth-autopush.trytofu.ai',
+    'https://user:private@oauth-autopush.trytofu.ai',
+    'https://oauth-autopush.trytofu.ai:444',
+    'https://oauth-autopush.trytofu.ai/start',
+    'https://oauth-autopush.trytofu.ai?private=1',
+    'https://oauth-autopush.trytofu.ai#private',
+  ]) {
+    process.env.TOFU_AUTH_BROKER_URL = value;
+    assert.equal((await configGet().json()).authBrokerUrl, '', value);
+  }
 });
 
 test('chat handlers reject unconfigured, unsigned and foreign-origin requests without database access', async (t) => {

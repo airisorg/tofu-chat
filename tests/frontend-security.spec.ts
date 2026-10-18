@@ -97,7 +97,7 @@ function state(s: ReturnType<typeof session>): ChatState {
     ],
   };
 }
-async function fixture(context: BrowserContext) {
+async function fixture(context: BrowserContext, authBrokerUrl?: unknown) {
   await context.route('**/*', async (route) => {
     const request = route.request(),
       url = new URL(request.url());
@@ -109,6 +109,7 @@ async function fixture(context: BrowserContext) {
     if (url.pathname === '/api/config')
       return route.fulfill({
         json: {
+          authBrokerUrl,
           supabaseUrl: provider,
           supabaseAnonKey: 'sb_publishable_LOCAL_ONLY',
           databaseConfigured: true,
@@ -304,27 +305,46 @@ test('read failures are reported and simultaneous selections never exceed three 
   await expect(page.getByRole('button', { name: 'Remove four.png', exact: true })).toHaveCount(0);
   await expect(page.locator('.toast')).toContainText('up to 3 files');
 });
-test('Continue with Google creates the callback challenge before the broker navigation', async ({
-  page,
-  context,
-}) => {
-  await fixture(context);
-  let returned = '';
-  await context.route('https://oauth.trytofu.ai/start?**', async (route) => {
-    returned = new URL(route.request().url()).searchParams.get('return') || '';
-    await route.fulfill({ contentType: 'text/html', body: '<p>Local broker fixture</p>' });
+for (const broker of [undefined, 'https://oauth.trytofu.ai', 'https://oauth-autopush.trytofu.ai']) {
+  test(`Continue with Google binds the callback before navigating to ${broker ?? 'the legacy default broker'}`, async ({
+    page,
+    context,
+  }) => {
+    await fixture(context, broker);
+    let returned = '';
+    await context.route(`${broker ?? 'https://oauth.trytofu.ai'}/start?**`, async (route) => {
+      returned = new URL(route.request().url()).searchParams.get('return') || '';
+      await route.fulfill({ contentType: 'text/html', body: '<p>Local broker fixture</p>' });
+    });
+    await page.goto(base);
+    await page.getByRole('button', { name: 'Continue with Google', exact: true }).click();
+    await expect.poll(() => returned).not.toBe('');
+    const callback = new URL(returned);
+    expect(callback.origin).toBe(origin);
+    expect(callback.pathname).toBe('/');
+    expect(callback.hash).toBe('');
+    expect([...callback.searchParams.keys()]).toEqual([LOGIN_NONCE_QUERY]);
+    expect(callback.searchParams.get(LOGIN_NONCE_QUERY)).toMatch(/^[0-9a-f-]{36}$/i);
+    await page.goto(`${returned}#${fragment()}`);
+    await heading(page);
+    expect(await page.evaluate((key) => sessionStorage.getItem(key), LOGIN_REQUEST_KEY)).toBeNull();
   });
-  await page.goto(base);
-  await page.getByRole('button', { name: 'Continue with Google', exact: true }).click();
-  await expect.poll(() => returned).not.toBe('');
-  const callback = new URL(returned);
-  expect(callback.origin).toBe(origin);
-  expect(callback.pathname).toBe('/');
-  expect(callback.searchParams.get(LOGIN_NONCE_QUERY)).toMatch(/^[0-9a-f-]{36}$/i);
-  await page.goto(`${returned}#${fragment()}`);
-  await heading(page);
-  expect(await page.evaluate((key) => sessionStorage.getItem(key), LOGIN_REQUEST_KEY)).toBeNull();
-});
+}
+
+for (const broker of ['', 'http://oauth-autopush.trytofu.ai', 123]) {
+  test(`invalid broker setting ${JSON.stringify(broker)} disables Google sign-in`, async ({
+    page,
+    context,
+  }) => {
+    await fixture(context, broker);
+    await page.goto(base);
+    await expect(
+      page.getByRole('button', { name: 'Continue with Google', exact: true }),
+    ).toBeDisabled();
+    expect(await page.evaluate((key) => sessionStorage.getItem(key), LOGIN_REQUEST_KEY)).toBeNull();
+    expect(new URL(page.url()).origin).toBe(origin);
+  });
+}
 test('an account change during a held read never attaches the earlier account’s selected file', async ({
   page,
   context,

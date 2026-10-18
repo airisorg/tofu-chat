@@ -216,12 +216,14 @@ function configure() {
   process.env.SUPABASE_ANON_KEY = anonKey;
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  delete process.env.TOFU_AUTH_BROKER_URL;
 }
 
 test('public config exposes only public settings and rejects insecure/misassigned keys', () => {
   configure();
   process.env.DATABASE_URL = 'postgres://private:secret@private.example/db';
   assert.deepEqual(publicConfig(), {
+    authBrokerUrl: 'https://oauth.trytofu.ai',
     supabaseUrl: 'https://auth.example.com',
     supabaseAnonKey: anonKey,
     databaseConfigured: true,
