@@ -1,5 +1,19 @@
 # Contributing
 
+Work on a branch or fork and open a pull request targeting `main`. The branch
+blocks direct pushes, force pushes and deletion. Merging requires an approving
+maintainer review, resolved review threads and all required CI and CodeQL gates
+against the current base. New commits dismiss old approvals; the latest push
+needs approval from someone other than its pusher. Maintainer ownership applies
+to every file, including workflows and test policy.
+
+External fork contributions need maintainer approval before CI runs. Review
+workflow changes before approving a run, and keep CI credentials and fixtures
+separate from production. Secret scanning uses the scanner's default rules with
+an empty fingerprint exclusion file and ignores inline allow comments. A root
+`.gitleaksignore` is rejected, so a contribution cannot introduce a silent
+scanner exclusion.
+
 Use Node.js 22.13 or newer, run `npm ci`, and start `npm run dev`. The local **Explore demo** preview needs no provider account. Preview is disabled by default in production; `NEXT_PUBLIC_ENABLE_DEMO=true` explicitly enables it for testing.
 
 Run `npm run typecheck`, `npm run build`, and `npm run test:unit` for server/client changes. Browser tests require a separately running local server; install their engines with `npx playwright install chromium webkit`. All browser configurations default to `http://127.0.0.1:3000`; set `APP_URL` for another local port. Hosted URLs are rejected because these suites use synthetic accounts and fault fixtures. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` optionally selects your Chromium binary.
