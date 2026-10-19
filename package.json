@@ -58,7 +58,7 @@
     "@playwright/test": "^1.55.0",
     "@types/istanbul-lib-coverage": "2.0.6",
     "@types/istanbul-lib-instrument": "1.7.8",
-    "@types/node": "^22.18.0",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "c8": "11.0.0",
