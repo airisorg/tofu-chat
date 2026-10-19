@@ -33,7 +33,7 @@ jobs:
       - run: npm audit --audit-level=moderate
       - run: npm run build
       - run: npm run test:coverage:production-clean
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: node-coverage
@@ -95,7 +95,7 @@ jobs:
           CHAT_NATIVE_WORK_DIR: ${{ runner.temp }}/relay-native
         run: npm run test:native 2>&1 | tee test-results/native-ci.log
       # Never upload a fixture cluster, its private TLS keys or HTTP auth state.
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: native-integration-evidence
@@ -139,7 +139,7 @@ jobs:
         run: npx playwright test --config playwright.frontend-security.config.ts --grep 'image CSP permits Google avatar hosts'
       - run: npm run test:reliability
       - run: npm run test:offline
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: browser-failures
@@ -165,7 +165,7 @@ jobs:
       # Production CSP/security and actual SW acceptance remain separate above;
       # explicit portable --ignore-snapshots never updates macOS pixel baselines.
       - run: npm run test:coverage:combined
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: combined-executable-coverage
@@ -221,7 +221,7 @@ jobs:
       # No --update-snapshots or --ignore-snapshots is permitted in this job.
       - run: npx playwright test --config playwright.landing-preview.config.ts
       - run: npx playwright test --config playwright.header-sidebar.config.ts
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: landing-screenshot-failures
