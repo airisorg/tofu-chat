@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
-import { X509Certificate, createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { createSecureContext } from 'node:tls';
+import { createSecureContext, rootCertificates } from 'node:tls';
 import { test } from 'node:test';
 import postgres from 'postgres';
 import { databaseTls } from '../src/lib/database-tls';
-import { SUPABASE_DATABASE_CA_PEM } from '../src/lib/supabase-ca';
 import { verifyDatabase } from '../scripts/verify-database';
 
 const local = 'postgres://synthetic_fixture@127.0.0.1:5432/example';
 const pooler = 'postgres://synthetic_fixture@aws-0-eu-west-1.pooler.supabase.com:6543/example';
-const direct = 'postgres://synthetic_fixture@db.abcdefghijklmnopqrst.supabase.co:5432/example';
+const remote = 'postgres://synthetic_fixture@pooler.db.example.invalid:6543/example';
+// Two public roots from Node's own store stand in for a database's CA; neither is a secret.
+const [hostCa, operatorCa] = rootCertificates.map((pem) => pem.trim() + '\n');
 
 test('production always verifies peers and retains the default hostname checker', () => {
   assert.deepEqual(databaseTls(local, { NODE_ENV: 'production' }), { rejectUnauthorized: true });
@@ -21,72 +21,77 @@ test('production always verifies peers and retains the default hostname checker'
   assert.equal(databaseTls('postgres://synthetic@[::1]/example', { NODE_ENV: 'test' }), undefined);
 });
 
-test('official public Supabase CA bytes and identity are bound to the audited download', () => {
-  assert.equal(
-    createHash('sha256').update(SUPABASE_DATABASE_CA_PEM).digest('hex'),
-    '700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7',
-  );
-  const certificate = new X509Certificate(SUPABASE_DATABASE_CA_PEM);
-  assert.equal(certificate.ca, true);
-  assert.equal(certificate.verify(certificate.publicKey), true);
-  assert.equal(
-    certificate.fingerprint256.replaceAll(':', ''),
-    '807025AD50D4ED219D2C9C7D299C004F824EB00CF7F65AFEF607D07B72E6CAFA',
-  );
+test("without a supplied CA every host, Supabase included, uses only Node's default store", () => {
+  for (const url of [pooler, remote, 'postgres://synthetic@db.abcdefghijklmnopqrst.supabase.co/x'])
+    for (const blank of [{}, { DATABASE_CA_CERT: '', SUPABASE_CA_CERT: '  ' }])
+      assert.deepEqual(databaseTls(url, { NODE_ENV: 'production', ...blank }), {
+        rejectUnauthorized: true,
+      });
 });
 
-test('only recognized Supabase database hosts gain the additional official CA', () => {
-  for (const url of [pooler, direct]) {
-    const options = databaseTls(url, { NODE_ENV: 'production' })!;
+test('the CA the host provides as SUPABASE_CA_CERT is trusted beside the default roots', () => {
+  for (const url of [pooler, remote, local]) {
+    const options = databaseTls(url, { NODE_ENV: 'production', SUPABASE_CA_CERT: hostCa })!;
     assert.equal(options.rejectUnauthorized, true);
     assert.equal(options.checkServerIdentity, undefined);
     assert.equal(options.servername, undefined, 'driver uses the actual URL hostname');
     assert.ok(Array.isArray(options.ca));
-    assert.ok(options.ca.includes(SUPABASE_DATABASE_CA_PEM));
+    assert.equal(options.ca.at(-1), hostCa);
     assert.ok(options.ca.length > 1, 'default roots remain alongside the additional root');
     createSecureContext(options);
   }
-  for (const host of [
-    'pooler.supabase.com.evil.invalid',
-    'evilpooler.supabase.com',
-    'db.abcdefghijklmnopqrst.supabase.co.evil.invalid',
-  ]) {
-    assert.deepEqual(
-      databaseTls('postgres://synthetic@' + host + '/example', { NODE_ENV: 'production' }),
-      { rejectUnauthorized: true },
-    );
-  }
 });
 
-test('explicit CA accepts actual and escaped PEM newlines without disabling hostname verification', () => {
-  for (const value of [
-    SUPABASE_DATABASE_CA_PEM,
-    SUPABASE_DATABASE_CA_PEM.replaceAll('\n', '\\n'),
-    SUPABASE_DATABASE_CA_PEM.replaceAll('\n', '\\r\\n'),
-  ]) {
-    const options = databaseTls(local, { NODE_ENV: 'production', DATABASE_CA_CERT: value })!;
-    assert.equal(options.rejectUnauthorized, true);
-    assert.equal(options.checkServerIdentity, undefined);
-    assert.ok(Array.isArray(options.ca));
-    assert.equal(options.ca.at(-1), SUPABASE_DATABASE_CA_PEM);
-    createSecureContext(options);
-  }
+test('DATABASE_CA_CERT wins over SUPABASE_CA_CERT, and an invalid winner is never skipped', () => {
+  const options = databaseTls(remote, {
+    NODE_ENV: 'production',
+    DATABASE_CA_CERT: operatorCa,
+    SUPABASE_CA_CERT: hostCa,
+  })!;
+  assert.ok(Array.isArray(options.ca));
+  assert.equal(options.ca.at(-1), operatorCa);
+  assert.throws(
+    () =>
+      databaseTls(remote, {
+        NODE_ENV: 'production',
+        DATABASE_CA_CERT: 'synthetic-sensitive-value',
+        SUPABASE_CA_CERT: hostCa,
+      }),
+    /must be valid PEM CA certificates/,
+  );
+});
+
+test('a supplied CA accepts actual and escaped PEM newlines without disabling hostname verification', () => {
+  for (const name of ['DATABASE_CA_CERT', 'SUPABASE_CA_CERT'])
+    for (const value of [
+      hostCa,
+      hostCa.replaceAll('\n', '\\n'),
+      hostCa.replaceAll('\n', '\\r\\n'),
+    ]) {
+      const options = databaseTls(local, { NODE_ENV: 'production', [name]: value })!;
+      assert.equal(options.rejectUnauthorized, true);
+      assert.equal(options.checkServerIdentity, undefined);
+      assert.ok(Array.isArray(options.ca));
+      assert.equal(options.ca.at(-1), hostCa);
+      createSecureContext(options);
+    }
 });
 
 test('invalid or oversized CA content fails without exposing operator input', () => {
-  for (const value of [
-    'synthetic-sensitive-value',
-    SUPABASE_DATABASE_CA_PEM + '\nsynthetic-sensitive-value',
-    SUPABASE_DATABASE_CA_PEM + ' '.repeat(65536),
-  ]) {
-    assert.throws(
-      () => databaseTls(local, { NODE_ENV: 'production', DATABASE_CA_CERT: value }),
-      (error) =>
-        error instanceof Error &&
-        error.message === 'The configured database CA must be valid PEM CA certificates.' &&
-        !error.message.includes('synthetic-sensitive-value'),
-    );
-  }
+  for (const name of ['DATABASE_CA_CERT', 'SUPABASE_CA_CERT'])
+    for (const value of [
+      'synthetic-sensitive-value',
+      hostCa + '\nsynthetic-sensitive-value',
+      hostCa + ' '.repeat(65536),
+    ]) {
+      assert.throws(
+        () => databaseTls(local, { NODE_ENV: 'production', [name]: value }),
+        (error) =>
+          error instanceof Error &&
+          error.message === 'The configured database CA must be valid PEM CA certificates.' &&
+          !error.message.includes('synthetic-sensitive-value'),
+      );
+    }
   assert.throws(
     () => databaseTls('https://synthetic.test.invalid/path', {}),
     /connection settings are invalid/,
@@ -167,6 +172,22 @@ test('build gate forces strict TLS, connects first, selects once and closes', as
   );
   assert.equal(fake.options()!.fetch_types, false, 'no driver type-introspection query');
   assert.equal(fake.options()!.connect_timeout, 15);
+});
+
+test('build gate trusts the CA the host provides, and an operator CA over it', async () => {
+  for (const [environment, expected] of [
+    [{ SUPABASE_CA_CERT: hostCa }, hostCa],
+    [{ SUPABASE_CA_CERT: hostCa, DATABASE_CA_CERT: operatorCa }, operatorCa],
+  ] as const) {
+    const fake = fakeProbe();
+    assert.equal(
+      await verifyDatabase({ DATABASE_URL: remote, ...environment }, fake.factory),
+      'verified',
+    );
+    const ssl = fake.options()!.ssl as { ca: string[]; rejectUnauthorized: boolean };
+    assert.equal(ssl.rejectUnauthorized, true);
+    assert.equal(ssl.ca.at(-1), expected);
+  }
 });
 
 test('missing URL skips only a local build and refuses known hosted deployments', async () => {

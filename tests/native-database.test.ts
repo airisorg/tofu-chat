@@ -1008,7 +1008,6 @@ test(
           [
             'src/lib/server.ts',
             'src/lib/database-tls.ts',
-            'src/lib/supabase-ca.ts',
             'scripts/verify-database.ts',
             'tests/native-database.test.ts',
             'tests/helpers/native-postgres.ts',

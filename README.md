@@ -45,7 +45,7 @@ Fork the repository, follow [Tofu's agent setup](https://trytofu.ai/agent), and 
 
 > Deploy this app on Tofu with a database and Google sign-in.
 
-Tofu connects the hosting and services; your agent builds and checks the app. This is a server app with a database, so it needs Tofu's Pro hosting. See [current plans](https://trytofu.ai/pricing) before deploying.
+Tofu connects the hosting and services; your agent builds and checks the app. The app has no service address built in: Tofu provides the database and its certificate (`DATABASE_URL`, `SUPABASE_CA_CERT`), the identity service (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) and where Google sign-in starts (`TOFU_SIGN_IN_URL`), so the same code runs on whichever backend Tofu connects. This is a server app with a database, so it needs Tofu's Pro hosting. See [current plans](https://trytofu.ai/pricing) before deploying.
 
 ## Run locally
 
@@ -58,7 +58,7 @@ npm run dev
 
 Open <http://localhost:3000> and choose **Explore demo** to try synthetic conversations without an account. The demo is enabled by default in development; its data stays in that browser. Production disables it unless explicitly enabled for testing.
 
-A connected workspace needs PostgreSQL and Supabase identity settings. Tofu supplies these for the hosted app; [.env.example](.env.example) lists the settings for your own deployment. Self-hosted Google sign-in also needs an authorized Tofu OAuth broker setup; environment values alone do not configure it. Keep populated environment files and credentials out of Git. See [runtime and data handling](docs/runtime.md) for authorization, limits and retry behavior.
+A connected workspace needs PostgreSQL and Supabase identity settings. Tofu supplies these for the hosted app; [.env.example](.env.example) lists the settings for your own deployment. Self-hosted Google sign-in also needs an authorized Tofu OAuth broker setup; setting `TOFU_SIGN_IN_URL` alone does not configure it, and without it the Google button stays off. Keep populated environment files and credentials out of Git. See [runtime and data handling](docs/runtime.md) for authorization, limits and retry behavior.
 
 ## Development
 

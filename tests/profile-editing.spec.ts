@@ -131,6 +131,7 @@ async function fixture(page: Page, context: BrowserContext) {
           supabaseUrl: provider,
           supabaseAnonKey: 'sb_publishable_LOCAL_ONLY',
           databaseConfigured: true,
+          signInUrl: 'https://sign-in.example.test/start',
         },
       });
     if (url.pathname === '/api/chat') {

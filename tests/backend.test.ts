@@ -216,6 +216,8 @@ function configure() {
   process.env.SUPABASE_ANON_KEY = anonKey;
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  delete process.env.TOFU_SIGN_IN_URL;
+  delete process.env.NEXT_PUBLIC_TOFU_SIGN_IN_URL;
 }
 
 test('public config exposes only public settings and rejects insecure/misassigned keys', () => {
@@ -225,6 +227,7 @@ test('public config exposes only public settings and rejects insecure/misassigne
     supabaseUrl: 'https://auth.example.com',
     supabaseAnonKey: anonKey,
     databaseConfigured: true,
+    signInUrl: '',
   });
   assert.equal(JSON.stringify(publicConfig()).includes('secret'), false);
   process.env.SUPABASE_URL = 'http://auth.example.com';
@@ -242,6 +245,28 @@ test('public config exposes only public settings and rejects insecure/misassigne
   process.env.SUPABASE_ANON_KEY = 'sb_publishable_demo';
   assert.equal(publicConfig().supabaseAnonKey, 'sb_publishable_demo');
   delete process.env.DATABASE_URL;
+});
+
+test('the sign-in start address comes only from the host, as a plain https URL', () => {
+  configure();
+  assert.equal(publicConfig().signInUrl, '', 'no address is built into the app');
+  process.env.NEXT_PUBLIC_TOFU_SIGN_IN_URL = 'https://sign-in.example.com/start';
+  assert.equal(publicConfig().signInUrl, 'https://sign-in.example.com/start');
+  process.env.TOFU_SIGN_IN_URL = 'https://broker.example.com/start/';
+  assert.equal(publicConfig().signInUrl, 'https://broker.example.com/start', 'server name wins');
+  for (const refused of [
+    'http://broker.example.com/start',
+    'https://user:password@broker.example.com/start',
+    'https://broker.example.com/start?return=https://evil.example',
+    'https://broker.example.com/start#fragment',
+    'javascript:alert(1)',
+    'not a url',
+  ]) {
+    process.env.TOFU_SIGN_IN_URL = refused;
+    delete process.env.NEXT_PUBLIC_TOFU_SIGN_IN_URL;
+    assert.equal(publicConfig().signInUrl, '', refused);
+  }
+  configure();
 });
 
 test('JSON reader accepts ordinary actions, rejects invalid content, and bounds streamed requests', async () => {

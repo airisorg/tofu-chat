@@ -48,6 +48,7 @@ export async function verifyDatabase(
       ssl: databaseTls(url, {
         NODE_ENV: 'production',
         DATABASE_CA_CERT: environment.DATABASE_CA_CERT,
+        SUPABASE_CA_CERT: environment.SUPABASE_CA_CERT,
       }),
       max: 1,
       prepare: false,
