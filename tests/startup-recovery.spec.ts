@@ -6,6 +6,7 @@ const valid = {
   supabaseUrl: 'https://startup-fixture.invalid',
   supabaseAnonKey: 'sb_publishable_STARTUP_SYNTHETIC',
   databaseConfigured: true,
+  signInUrl: 'https://sign-in.example.test/start',
 };
 const malformed = [
   ['null configuration', null],

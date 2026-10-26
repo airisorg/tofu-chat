@@ -112,6 +112,7 @@ async function fixture(context: BrowserContext) {
           supabaseUrl: provider,
           supabaseAnonKey: 'sb_publishable_LOCAL_ONLY',
           databaseConfigured: true,
+          signInUrl: 'https://sign-in.example.test/start',
         },
       });
     if (url.pathname === '/api/chat')
@@ -310,7 +311,7 @@ test('Continue with Google creates the callback challenge before the broker navi
 }) => {
   await fixture(context);
   let returned = '';
-  await context.route('https://oauth.trytofu.ai/start?**', async (route) => {
+  await context.route('https://sign-in.example.test/start?**', async (route) => {
     returned = new URL(route.request().url()).searchParams.get('return') || '';
     await route.fulfill({ contentType: 'text/html', body: '<p>Local broker fixture</p>' });
   });
@@ -329,7 +330,7 @@ test('Continue with Google creates the callback challenge before the broker navi
 // (Playwright does not read a page that has a held navigation pending.)
 async function stoppedBroker(context: BrowserContext) {
   const starts: string[] = [];
-  await context.route('https://oauth.trytofu.ai/start?**', (route) => {
+  await context.route('https://sign-in.example.test/start?**', (route) => {
     starts.push(route.request().url());
     return route.abort('aborted');
   });

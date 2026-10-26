@@ -1,6 +1,5 @@
 import { X509Certificate } from 'node:crypto';
 import * as tls from 'node:tls';
-import { SUPABASE_DATABASE_CA_PEM } from './supabase-ca';
 
 type Environment = Readonly<Record<string, string | undefined>>;
 const MAX_CA_BYTES = 64 * 1024;
@@ -42,20 +41,20 @@ export function databaseTls(
   } catch {
     throw new Error('The database connection settings are invalid.');
   }
-  const configured = environment.DATABASE_CA_CERT;
-  const supplied = configured?.trim() ? configured : undefined;
-  const supabase =
-    /^db\.[a-z0-9]{20}\.supabase\.co$/.test(hostname) || hostname.endsWith('.pooler.supabase.com');
+  // DATABASE_CA_CERT is an operator override; SUPABASE_CA_CERT is the database's root that Tofu provides.
+  const supplied = [environment.DATABASE_CA_CERT, environment.SUPABASE_CA_CERT].find((value) =>
+    value?.trim(),
+  );
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
   if (environment.NODE_ENV !== 'production' && local && !supplied) return undefined;
-  // Leave ca absent for other providers so Node's default store and NODE_EXTRA_CA_CERTS remain effective.
-  if (!supabase && !supplied) return { rejectUnauthorized: true };
+  // Without a supplied CA, leave ca absent so Node's default store and NODE_EXTRA_CA_CERTS remain effective.
+  if (!supplied) return { rejectUnauthorized: true };
   const roots =
     typeof tls.getCACertificates === 'function'
       ? tls.getCACertificates('default')
       : tls.rootCertificates;
   return {
     rejectUnauthorized: true,
-    ca: [...roots, supplied ? configuredCa(supplied) : SUPABASE_DATABASE_CA_PEM],
+    ca: [...roots, configuredCa(supplied)],
   };
 }

@@ -197,6 +197,7 @@ async function authenticated(page: Page) {
         supabaseUrl: provider,
         supabaseAnonKey: 'sb_publishable_LOCAL_ONLY',
         databaseConfigured: true,
+        signInUrl: 'https://sign-in.example.test/start',
       },
     }),
   );

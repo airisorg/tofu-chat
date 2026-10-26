@@ -64,19 +64,28 @@ export function publicConfig() {
       supabaseAnonKey = '';
     }
   }
-  try {
-    const url = new URL(supabaseUrl);
-    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash)
-      supabaseUrl = '';
-    else supabaseUrl = url.origin + url.pathname.replace(/\/$/, '');
-  } catch {
-    supabaseUrl = '';
-  }
+  supabaseUrl = plainHttpsUrl(supabaseUrl);
   return {
     supabaseUrl,
     supabaseAnonKey: supabaseUrl ? supabaseAnonKey : '',
     databaseConfigured: Boolean(process.env.DATABASE_URL),
+    // Where Google sign-in starts: the host's sign-in service, never an address built into the app.
+    signInUrl: plainHttpsUrl(
+      process.env.TOFU_SIGN_IN_URL || process.env.NEXT_PUBLIC_TOFU_SIGN_IN_URL || '',
+    ),
   };
+}
+
+/** An https address without credentials, query or fragment, without its trailing slash; otherwise empty. */
+function plainHttpsUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash)
+      return '';
+    return url.origin + url.pathname.replace(/\/$/, '');
+  } catch {
+    return '';
+  }
 }
 
 let db: postgres.Sql | undefined;

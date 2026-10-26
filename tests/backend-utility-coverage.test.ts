@@ -38,6 +38,8 @@ test('config handler preserves public fallback settings and hides malformed depl
     NEXT_PUBLIC_SUPABASE_URL: 'https://identity.fixture.invalid/project/',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_fixture',
     DATABASE_URL: undefined,
+    TOFU_SIGN_IN_URL: undefined,
+    NEXT_PUBLIC_TOFU_SIGN_IN_URL: 'https://sign-in.fixture.invalid/start',
   });
   const response = configGet();
   assert.equal(response.status, 200);
@@ -47,12 +49,15 @@ test('config handler preserves public fallback settings and hides malformed depl
     supabaseUrl: 'https://identity.fixture.invalid/project',
     supabaseAnonKey: 'sb_publishable_fixture',
     databaseConfigured: false,
+    signInUrl: 'https://sign-in.fixture.invalid/start',
   });
   process.env.SUPABASE_URL = 'this is not a URL';
+  process.env.TOFU_SIGN_IN_URL = 'this is not a URL either';
   assert.deepEqual(publicConfig(), {
     supabaseUrl: '',
     supabaseAnonKey: '',
     databaseConfigured: false,
+    signInUrl: '',
   });
   process.env.SUPABASE_URL = 'https://identity.fixture.invalid';
   process.env.SUPABASE_ANON_KEY = 'malformed-public-key';

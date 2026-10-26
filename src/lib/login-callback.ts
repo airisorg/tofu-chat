@@ -18,6 +18,19 @@ const AUTH_KEYS = [
 ];
 type StorageAccess = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
+/** The host's sign-in start address when it is a plain https URL, else null: the app has no built-in one. */
+export function signInStart(configured: unknown): string | null {
+  if (typeof configured !== 'string') return null;
+  try {
+    const url = new URL(configured);
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash)
+      return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
 export function beginLogin(returnUrl: string, storage: StorageAccess, now = Date.now()): string {
   const nonce = crypto.randomUUID();
   const record = JSON.stringify({ nonce, createdAt: now });

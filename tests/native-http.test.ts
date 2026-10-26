@@ -115,6 +115,7 @@ test(
         SUPABASE_ANON_KEY: 'sb_publishable_native_fixture',
         NEXT_PUBLIC_SUPABASE_URL: authUrl,
         NEXT_PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_native_fixture',
+        TOFU_SIGN_IN_URL: 'https://sign-in.native.invalid/start',
         NEXT_TELEMETRY_DISABLED: '1',
       });
       await until(
@@ -173,8 +174,10 @@ test(
           assert.equal(config.databaseConfigured, true);
           assert.equal(config.supabaseUrl, authUrl);
           assert.equal(config.supabaseAnonKey, 'sb_publishable_native_fixture');
+          assert.equal(config.signInUrl, 'https://sign-in.native.invalid/start');
           assert.deepEqual(Object.keys(config).sort(), [
             'databaseConfigured',
+            'signInUrl',
             'supabaseAnonKey',
             'supabaseUrl',
           ]);

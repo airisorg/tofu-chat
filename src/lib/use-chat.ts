@@ -21,11 +21,17 @@ import {
   cleanLoginCallback,
   inspectLoginCallback,
   LOGIN_REQUEST_KEY,
+  signInStart,
 } from './login-callback';
 import { errorMessage, normalizeNetworkError } from './network-error';
 export { withRequestDeadline } from './request-deadline';
 
-type Config = { supabaseUrl: string; supabaseAnonKey: string; databaseConfigured: boolean };
+type Config = {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  databaseConfigured: boolean;
+  signInUrl?: string;
+};
 type Mode = 'guest' | 'auth' | 'demo';
 const AUTH_STORAGE_KEY = 'relay-chat-auth-v1';
 const DEMO_CHOICE_KEY = 'relay-chat-demo-choice-v1';
@@ -611,7 +617,8 @@ export function useChat(): ChatController {
           !config ||
           typeof config.supabaseUrl !== 'string' ||
           typeof config.supabaseAnonKey !== 'string' ||
-          typeof config.databaseConfigured !== 'boolean'
+          typeof config.databaseConfigured !== 'boolean' ||
+          !['string', 'undefined'].includes(typeof config.signInUrl)
         )
           throw new Error('Unable to load sign-in settings.');
         let valid = false;
@@ -631,7 +638,8 @@ export function useChat(): ChatController {
         // A recovered settings request clears only its own connection error;
         // callback validation and account errors must remain visible.
         setError((current) => (current === BOOTSTRAP_ERROR ? null : current));
-        setAuthAvailable(valid);
+        // Sign-in also needs the host's sign-in address; a restored session does not.
+        setAuthAvailable(valid && signInStart(config.signInUrl) !== null);
         if (!valid) {
           initialized = true;
           if (!restoreDemo()) setLoading(false);
@@ -1013,7 +1021,8 @@ export function useChat(): ChatController {
   }, [signingIn]);
 
   const signIn = useCallback(() => {
-    if (!authAvailable || !configRef.current) {
+    const start = signInStart(configRef.current?.signInUrl);
+    if (!authAvailable || !start) {
       setError('Google sign-in is unavailable. Please try again when you’re connected.');
       return;
     }
@@ -1025,7 +1034,7 @@ export function useChat(): ChatController {
     }
     try {
       const callback = beginLogin(`${window.location.origin}/`, sessionStorage);
-      const url = new URL('https://oauth.trytofu.ai/start');
+      const url = new URL(start);
       url.searchParams.set('return', callback);
       setSigningIn(true);
       window.location.assign(url.href);

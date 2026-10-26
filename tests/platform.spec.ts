@@ -799,13 +799,14 @@ for (const signInInput of ['click', 'Enter'] as const) {
           supabaseUrl: 'https://auth.example.test',
           supabaseAnonKey: 'public-test-key',
           databaseConfigured: true,
+          signInUrl: 'https://sign-in.example.test/start',
         }),
       }),
     );
     let broker = '';
     // This intercepts the outbound navigation. It never contacts Tofu or Google
     // and does not establish Safari's physical standalone-context behavior.
-    await page.route('https://oauth.trytofu.ai/start?*', (route) => {
+    await page.route('https://sign-in.example.test/start?*', (route) => {
       broker = route.request().url();
       return route.fulfill({
         contentType: 'text/html',
@@ -823,7 +824,7 @@ for (const signInInput of ['click', 'Enter'] as const) {
     else await signIn.press('Enter');
     await expect.poll(() => broker).not.toBe('');
     const url = new URL(broker);
-    expect(url.origin).toBe('https://oauth.trytofu.ai');
+    expect(url.origin + url.pathname).toBe('https://sign-in.example.test/start');
     const callback = new URL(url.searchParams.get('return')!);
     expect(callback.origin).toBe(new URL(baseURL!).origin);
     expect(callback.pathname).toBe('/');
@@ -832,6 +833,41 @@ for (const signInInput of ['click', 'Enter'] as const) {
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );
     expect([...callback.searchParams.keys()]).toEqual(['chat_login_nonce']);
+  });
+}
+
+for (const signInUrl of [
+  undefined,
+  '',
+  'http://sign-in.example.test/start',
+  'https://user:pw@sign-in.example.test/start',
+]) {
+  test(`Google sign-in stays off with no usable host sign-in address (${String(signInUrl)})`, async ({
+    page,
+  }) => {
+    await page.route('**/api/config', (route) =>
+      route.fulfill({
+        json: {
+          supabaseUrl: 'https://auth.example.test',
+          supabaseAnonKey: 'public-test-key',
+          databaseConfigured: true,
+          ...(signInUrl === undefined ? {} : { signInUrl }),
+        },
+      }),
+    );
+    const starts: string[] = [];
+    // No address is built into the app, so no sign-in navigation may leave this origin.
+    await page.route(/\/start\?/, (route) => {
+      starts.push(route.request().url());
+      return route.abort('blockedbyclient');
+    });
+    await page.goto('/');
+    const signIn = page.getByRole('button', { name: 'Continue with Google', exact: true });
+    await expect(signIn).toBeDisabled();
+    await expect(page.locator('.auth-note')).toHaveText(
+      /Google sign-in is (being configured|temporarily unavailable)/,
+    );
+    expect(starts).toEqual([]);
   });
 }
 
@@ -1060,6 +1096,7 @@ test('protected media shows text immediately, loads with authorization and recov
           supabaseUrl: authOrigin,
           supabaseAnonKey: 'PUBLIC_LOCAL_FIXTURE_ONLY',
           databaseConfigured: true,
+          signInUrl: 'https://sign-in.example.test/start',
         },
       });
     if (url.pathname === '/api/chat') return route.fulfill({ json: { state } });

@@ -458,6 +458,7 @@ async function authenticated(page: Page, context: BrowserContext, baseURL: strin
           supabaseUrl: provider,
           supabaseAnonKey: 'sb_publishable_LOCAL_NOT_A_REAL_KEY',
           databaseConfigured: true,
+          signInUrl: 'https://sign-in.example.test/start',
         },
       });
     if (url.pathname !== '/api/chat') return route.continue();

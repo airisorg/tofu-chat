@@ -149,6 +149,7 @@ async function connect(browser: Browser, person: Person, shared: ReturnType<type
           supabaseUrl: provider,
           supabaseAnonKey: 'sb_publishable_SYNTHETIC',
           databaseConfigured: true,
+          signInUrl: 'https://sign-in.example.test/start',
         },
       });
     if (url.pathname !== '/api/chat') return route.continue();

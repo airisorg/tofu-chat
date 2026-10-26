@@ -7,6 +7,7 @@ import {
   LOGIN_NONCE_QUERY,
   LOGIN_REQUEST_KEY,
   LOGIN_REQUEST_TTL_MS,
+  signInStart,
 } from '../src/lib/login-callback';
 const nonce = '00000000-0000-4000-8000-000000000111',
   now = 1000000;
@@ -88,4 +89,18 @@ test('sign-in initiation saves a UUID challenge in this tab before returning a U
     inspectLoginCallback(new URL(callback.href + '#access_token=LOCAL_FAKE'), store, now).accepted,
     true,
   );
+});
+test('sign-in starts only at a configured plain https address', () => {
+  assert.equal(signInStart('https://broker.example/start'), 'https://broker.example/start');
+  for (const refused of [
+    undefined,
+    '',
+    'not a url',
+    'http://broker.example/start',
+    'https://user:password@broker.example/start',
+    'https://broker.example/start?return=https://evil.example',
+    'https://broker.example/start#fragment',
+    42,
+  ])
+    assert.equal(signInStart(refused), null, String(refused));
 });

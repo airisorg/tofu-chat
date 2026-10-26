@@ -523,6 +523,7 @@ async function authenticatedFixture(
           supabaseUrl: fakeSupabaseOrigin,
           supabaseAnonKey: 'sb_publishable_LOCAL_TEST_ONLY_NOT_A_REAL_KEY',
           databaseConfigured: true,
+          signInUrl: 'https://sign-in.example.test/start',
         },
       });
     }

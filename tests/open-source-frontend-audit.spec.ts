@@ -198,6 +198,7 @@ for (const theme of ['light', 'dark'] as const) {
           supabaseUrl: 'https://frontend-audit.invalid',
           supabaseAnonKey: 'sb_publishable_LOCAL_NOT_A_REAL_KEY',
           databaseConfigured: true,
+          signInUrl: 'https://sign-in.example.test/start',
         },
       }),
     );
