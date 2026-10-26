@@ -45,7 +45,7 @@ Fork the repository, follow [Tofu's agent setup](https://trytofu.ai/agent), and 
 
 > Deploy this app on Tofu with a database and Google sign-in.
 
-Tofu connects the hosting and services; your agent builds and checks the app. The app has no service address built in: Tofu provides the database and its certificate (`DATABASE_URL`, `SUPABASE_CA_CERT`), the identity service (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) and where Google sign-in starts (`TOFU_SIGN_IN_URL`), so the same code runs on whichever backend Tofu connects. This is a server app with a database, so it needs Tofu's Pro hosting. See [current plans](https://trytofu.ai/pricing) before deploying.
+Tofu connects the hosting and services; your agent builds and checks the app. The app has no service address built in: Tofu provides the database and its certificate (`DATABASE_URL`, `SUPABASE_CA_CERT`), the identity service (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) and where Google sign-in starts (`TOFU_SIGN_IN_URL`), so the same code runs on whichever backend Tofu connects. This is a server app with a database; see [current plans](https://trytofu.ai/pricing) before deploying.
 
 ## Run locally
 
