@@ -21,6 +21,7 @@ type FakeBehavior = {
   hangSchema?: boolean;
   hangClose?: boolean;
   closeError?: boolean;
+  schemaDelay?: number;
   version?: unknown;
 };
 function fakeDatabase(behavior: FakeBehavior = {}) {
@@ -49,6 +50,8 @@ function fakeDatabase(behavior: FakeBehavior = {}) {
         order.push('schema');
         if (behavior.schemaError) throw new Error('synthetic-sensitive-driver-value');
         if (behavior.hangSchema) return never();
+        if (behavior.schemaDelay)
+          await new Promise((resolve) => setTimeout(resolve, behavior.schemaDelay));
       },
       async end(settings: { timeout: number }) {
         order.push('end');
@@ -176,6 +179,21 @@ test('schema step connect/schema/cleanup deadlines are bounded and stop the buil
     );
     assert.equal(fake.order.at(-1), 'end');
   }
+});
+
+test('schema step lifts the connect deadline once the connection answers', async () => {
+  // The schema outlasts the connect limit but not the schema limit, so only a lifted connect
+  // timer lets it finish.
+  const fake = fakeDatabase({ schemaDelay: 60 });
+  assert.equal(
+    await applyBuildSchema({ DATABASE_URL: local }, fake.factory, {
+      connect: 20,
+      schema: 1_000,
+      close: 100,
+    }),
+    6,
+  );
+  assert.deepEqual(fake.order, ['connect', 'schema', 'read', 'end']);
 });
 
 async function closedLoopbackPort(): Promise<number> {

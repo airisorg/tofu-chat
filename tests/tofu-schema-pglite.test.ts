@@ -18,13 +18,15 @@ test('schema step applies the app schema once, records version 6 and is safe to 
       },
     });
   }) as unknown as typeof postgres;
+  // The adapter reports no first query, so the whole run would be held to the connect limit.
+  const limits = { connect: 60_000, schema: 60_000, close: 3_000 };
   try {
     const environment = { DATABASE_URL: 'postgres://synthetic_fixture@127.0.0.1:5432/example' };
-    assert.equal(await applyBuildSchema(environment, factory), 6);
+    assert.equal(await applyBuildSchema(environment, factory, limits), 6);
     await pg.query(
       "insert into relay.profiles(id,email,name) values('kept','kept@test.invalid','Kept')",
     );
-    assert.equal(await applyBuildSchema(environment, factory), 6);
+    assert.equal(await applyBuildSchema(environment, factory, limits), 6);
     assert.deepEqual([connections, closed], [2, 2]);
     const tables = await pg.query<{ relname: string; relrowsecurity: boolean }>(
       "select c.relname,c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='relay' and c.relkind='r' order by c.relname",

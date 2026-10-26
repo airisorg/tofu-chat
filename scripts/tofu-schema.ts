@@ -117,7 +117,7 @@ if (basename(process.argv[1] ?? '') === 'tofu-schema.ts') {
       );
     })
     .catch((error) => {
-      console.error(error.message);
-      process.exitCode = 1;
+      // A timed-out connection is only half-closed; exit rather than wait for the peer to close it.
+      process.stderr.write(`${error.message}\n`, () => process.exit(1));
     });
 }
