@@ -45,6 +45,7 @@ function fixture() {
   writeFileSync(resolve(root, 'src/unloaded.ts'), 'export function unopened() { return 30; }');
   writeFileSync(resolve(root, 'src/types.ts'), 'export type Id = string;');
   writeFileSync(resolve(root, 'scripts/verify-database.ts'), 'export const check = () => 1;');
+  writeFileSync(resolve(root, 'scripts/tofu-schema.ts'), 'export const apply = () => 6;');
   const manifest = inventory(root, 'fixture-run');
   const sandbox = { __coverage__: {} as RawCoverage['coverage'] };
   runInNewContext(

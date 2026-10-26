@@ -21,6 +21,7 @@ function runtimeSources(root) {
     ...walk('src'),
     ...walk('public').filter((path) => path.endsWith('.js')),
     'scripts/verify-database.ts',
+    'scripts/tofu-schema.ts',
   ].sort();
 }
 function instrument(source, filename, runId) {

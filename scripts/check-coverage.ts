@@ -40,6 +40,7 @@ const expected = [
   ...sources('src'),
   ...sources('public').filter((path) => path.endsWith('.js')),
   'scripts/verify-database.ts',
+  'scripts/tofu-schema.ts',
 ].sort();
 for (const path of expected)
   if (!files.has(path)) throw new Error(`Coverage denominator omitted ${path}`);
