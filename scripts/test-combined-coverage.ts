@@ -101,6 +101,12 @@ async function main() {
       resolve(output, 'node-source'),
       { ...collect, CHAT_COVERAGE_LAYER: 'node', NODE_ENV: 'production' },
     );
+    run(
+      'local instrumented database schema build step',
+      [tsx, 'scripts/tofu-schema.ts'],
+      resolve(output, 'node-source'),
+      { ...collect, CHAT_COVERAGE_LAYER: 'node', NODE_ENV: 'production' },
+    );
     run('opt-in instrumented Webpack build', [next, 'build', '--webpack'], root, {
       CHAT_INSTRUMENT_COVERAGE: '1',
       NEXT_PUBLIC_ENABLE_DEMO: 'true',
